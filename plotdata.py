@@ -21,6 +21,15 @@ format = "pdf" #also does image formats, i.e. png,jpg, etc.
 default_lines = None # if this is None, everything will be plotted
 # use default_lines = [2,28,123,45] etc. to change the default set of lines to be plottedh
 
+
+# the labels:
+#   keyed by weight, each value can either be a string: the label in the legend
+#   or a length 2 or 3 tuple
+#   if length is 2, first is the label, second is a matplotlib style string, i.e. '-' or 'g:' (see pylab.plot for full list)
+#   if length is 3, first is the label, second is style, third is color
+#           this allows for extra colors, like 'chartreuse' or '#abc123'
+#           see matplotlib.colors.cnames for named colors
+#           or use rgb hex values with '#aabbcc'
 the_labels = {
 2 : '$H_2$',
 14: '$N$',
@@ -29,14 +38,14 @@ the_labels = {
 18: '$H_2O$',
 28: '$N_2$',
 32: '$O_2$',
-40: '$Ar$',
+40: ('$Ar$','g--'),
 44: '$CO_2$',
-'TPressure': ('$Total$', '-', 'k')
+'TPressure': ('$Total$', '-', 'darkred')
 }
 
 # this is the list of colors to use for lines:
-the_colors = ['b', 'g', 'r', 'c', 'm', 'k', 'orange','brown', 'y', 'pink']
-the_styles = ['-','--',':','-.']
+the_colors = ['b', 'g', 'r', 'c', 'm', 'k', 'orange','brown', 'y', 'pink', 'slategray']
+the_styles = [':','-.','--', '-']
 # see matplotlib.colors.cnames for named colors. '#RRGGBB' also works
 
 ######## end preferences  ########
@@ -55,7 +64,7 @@ except:
     matplotlib.axes.set_default_color_cycle(the_colors)
 
 pylab.rcParams['lines.markeredgewidth'] = 0.2
-pylab.rcParams['legend.fontsize']='x-small'
+pylab.rcParams['legend.fontsize']='small'
 pylab.rcParams['legend.labelspacing']=0.
 
 
@@ -124,7 +133,6 @@ def parse(fname,keep=None):
         # Scan#	Time Into Run	MASS( 2)	MASS(18)	MASS(28)	MASS(32)	MASS(40)	MASS(44)	TPressure
         header = s.split('\t')
         # masses = map(int, [e.replace('Mass(','')])
-        labels = []
         kept   = []
         weights = []
         for i,ms in enumerate(header[2:]): # ignore first 2, ecause they are time
@@ -135,17 +143,16 @@ def parse(fname,keep=None):
             else:
                 # string name, probably just TPressure
                 z = ms.strip()
-            if keep is None or isinstance(z,str) or z in keep or weights.get(z,None) in keep\
-                        or weights.get(z,'').replace('$','').replace('_','') in keep:
-                try:
-                    labels.append(the_labels[z])
-                except KeyError:
-                    labels.append(str(z))
-                weights.append(hash(z))
+            label = the_labels.get(z, '')
+            if not isinstance(label, str):
+                label = label[0]
+            if keep is None or isinstance(z,str) or z in keep or label in keep\
+                        or label.replace('$','').replace('_','') in keep:
+                weights.append(z)
                 kept.append(i)
         
         kept.reverse()
-        labels.reverse()
+        weights.reverse()
         
         if not s: # EOF
             raise IOError("Could not parse %s, incorrect format?"%fname)
@@ -166,7 +173,7 @@ def parse(fname,keep=None):
                 times.append(t)
                 M.append(MM)
     # M.reverse()
-    return array(times),array(M), labels, weights, sod
+    return array(times),array(M), weights, sod
 
 def feed(f):
     """skip over blank lines
@@ -291,19 +298,22 @@ def plot_run(fname,styles=None,keep=None,save=False,hold=False, cmap_plot=False,
         styles = [styles]
     styles=list(styles) # in case of arrays that won't grow when I do styles*2
     
-    t,M,rich_labels,weights,sod = parse(fname,keep=keep) # get the data
+    t,M,weights,sod = parse(fname,keep=keep) # get the data
     labels = []
     plotstyles = []
     colors = []
     
-    for w,tup in zip(weights, rich_labels):
+    # for w,tup in zip(weights, rich_labels):
+    for w in weights:
+        tup = the_labels[w]
         if isinstance(tup,str):
             l = tup
-            s = styles[hash(w)%len(styles)]
+            s = styles[(hash(w)/len(the_colors))%len(styles)]
             c = the_colors[hash(w)%len(the_colors)]
+            print tup, w,s,c
         elif len(tup) == 2:
             l,s = tup
-            c=None
+            c = None
         else:
             l,s,c = tup
         labels.append(l)
@@ -347,7 +357,11 @@ def plot_run(fname,styles=None,keep=None,save=False,hold=False, cmap_plot=False,
             colors = [colors[i] for i in neworder]
         
         for s,c,line in zip(plotstyles,colors, M.transpose()):
-            pylab.semilogy(t,line,s,color=c)
+            if c is not None:
+                pylab.semilogy(t,line,s,color=c)
+            else:
+                pylab.semilogy(t,line,s)
+                
     else:
         while ',' in styles:
             styles.remove(',') # drop the pixel
