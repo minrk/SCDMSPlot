@@ -92,15 +92,20 @@ def update_me():
     import os,shutil,time,sys
     ans = raw_input("are you sure you want to overwrite this file? (y/n): ").lower()
     if "y" in ans and "n" not in ans:
-        shutil.move(__file__, strip_extension(__file__)+'.prev.py')
+        prevfile = strip_extension(__file__)+'.prev.py'
+        shutil.copy(__file__, prevfile)
         cmd = "curl http://github.com/minrk/SCDMSPlot/raw/master/plotdata.py -o '%s'"%__file__
         print "Performing: %s"%cmd
         sys.stdout.flush()
         # time.sleep(1)
-        os.system(cmd)
-        print "don't forget to 'run %s' to load any updates"%__file__
+        
+        if not os.system(cmd):
+            print "previous version located at %s"%prevfile
+            print "don't forget to 'run %s' to load any updates"%__file__
+        else:
+            print "Download failed!"
     else:
-        print "cancelling"
+        print "cancelling update"
 
 def strip_extension(s):
     """remove the extension from a filename:
@@ -443,6 +448,9 @@ if __name__ == '__main__':
     import sys
     # for match in sys.argv[1:]:
         # print sys.argv[1:]
+    for arg in sys.argv[1:]:
+        if 'update' in arg.lower():
+            update_me()
     multiplot(*sys.argv[1:])
 
 
