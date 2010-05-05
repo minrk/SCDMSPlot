@@ -1,0 +1,11 @@
+Script for parsing and plotting SCDMS deposition data
+
+For use in command-line:
+$> python /path/to/plotdata.py R*.txt
+
+or within Python:
+>>> plot_run("filename.txt") # to plot single file (plot_run(fname, True) to save the result)
+>>> multiplot("file*.txt") # to plot each file that matches a pattern
+
+by Min Ragan-Kelley (minrk@berkeley.edu)
+for Matt Cherry (mcherry1@stanford.edu) 
