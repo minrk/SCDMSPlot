@@ -87,6 +87,21 @@ def lookup(val,dikt):
         if v == val:
             return k
 
+def update_me():
+    """updates the plotdata.py script from git"""
+    import os,shutil,time,sys
+    ans = raw_input("are you sure you want to overwrite this file? (y/n): ").lower()
+    if "y" in ans and "n" not in ans:
+        shutil.move(__file__, strip_extension(__file__)+'.prev.py')
+        cmd = "curl http://github.com/minrk/SCDMSPlot/raw/master/plotdata.py -o '%s'"%__file__
+        print "Performing: %s"%cmd
+        sys.stdout.flush()
+        # time.sleep(1)
+        os.system(cmd)
+        print "don't forget to 'run %s' to load the updates"%__file__
+    else:
+        print "cancelling"
+
 def strip_extension(s):
     """remove the extension from a filename:
     file.txt -> file
