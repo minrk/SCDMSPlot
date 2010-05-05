@@ -19,6 +19,7 @@ t_units = "min" # options are min,sec,scan (scan is default)
 format = "pdf" #also does image formats, i.e. png,jpg, etc.
 # lines to plot:
 default_lines = None # if this is None, everything will be plotted
+default_lines = [2,4]
 # use default_lines = [2,28,123,45] etc. to change the default set of lines to be plottedh
 
 
@@ -310,7 +311,7 @@ def plot_run(fname,styles=None,keep=None,save=False,hold=False, cmap_plot=False,
             l = tup
             s = styles[(hash(w)/len(the_colors))%len(styles)]
             c = the_colors[hash(w)%len(the_colors)]
-            print tup, w,s,c
+            # print tup, w,s,c
         elif len(tup) == 2:
             l,s = tup
             c = None
