@@ -98,7 +98,7 @@ def update_me():
         sys.stdout.flush()
         # time.sleep(1)
         os.system(cmd)
-        print "don't forget to 'run %s' to load the updates"%__file__
+        print "don't forget to 'run %s' to load any updates"%__file__
     else:
         print "cancelling"
 
