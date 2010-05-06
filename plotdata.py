@@ -17,11 +17,9 @@ for Matt Cherry (mcherry1@stanford.edu)
 
 t_units = "min" # options are min,sec,scan (scan is default)
 format = "pdf" #also does image formats, i.e. png,jpg, etc.
-# lines to plot:
+# lines to plot:  (Comment one of these out!)
 default_lines = None # if this is None, everything will be plotted
-default_lines = [2,4]
-# use default_lines = [2,28,123,45] etc. to change the default set of lines to be plottedh
-
+#default_lines = [2,18,28,32,40,44] # This is the "standard suspects" default set
 
 # the labels:
 #   keyed by weight, each value can either be a string: the label in the legend
@@ -32,21 +30,18 @@ default_lines = [2,4]
 #           see matplotlib.colors.cnames for named colors
 #           or use rgb hex values with '#aabbcc'
 the_labels = {
-2 : '$H_2$',
-14: '$N$',
-15: '$CH_3$',
-16: '$O$',
-18: '$H_2O$',
-28: '$N_2$',
-32: '$O_2$',
-40: ('$Ar$','g--'),
-44: '$CO_2$',
-'TPressure': ('$Total$', '-', 'darkred')
+2 : ('$H_2$','-','crimson'),
+18: ('$H_2O$','-','aqua'),
+28: ('$N_2$','-','darkgreen'),
+32: ('$O_2$','-','gold'),
+40: ('$Ar$','-','darkred'),
+44: ('$CO_2$','-','chocolate'),
+'TPressure': ('$Total$','-','purple')
 }
 
 # this is the list of colors to use for lines:
-the_colors = ['b', 'g', 'r', 'c', 'm', 'k', 'orange','brown', 'y', 'pink', 'slategray']
-the_styles = [':','-.','--', '-']
+the_colors = ['b', 'g', 'r', 'c', 'm', 'orange', 'y', 'pink', 'slategray']
+the_styles = [':','-.','--']
 # see matplotlib.colors.cnames for named colors. '#RRGGBB' also works
 
 ######## end preferences  ########
