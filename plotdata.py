@@ -48,7 +48,8 @@ markersize = 4. # default is 6.
 
 ######## end preferences  ########
 
-import re
+import re,os,shutil,sys
+
 from glob import glob
 from os import path
 import pylab
@@ -87,22 +88,60 @@ def lookup(val,dikt):
 
 def update_me():
     """updates the plotdata.py script from git"""
-    import os,shutil,sys
     print "Updating: ''%s"%__file__
     ans = raw_input("Are you sure you want to overwrite this file? (y/n): ").lower()
+    
+    cwd = path.abspath(os.curdir)
+    gitdir = path.abspath(path.dirname(__file__))
+    
     if "y" in ans and "n" not in ans:
         prevfile = strip_extension(__file__)+'.prev.py'
         shutil.copy(__file__, prevfile)
-        cmd = "curl http://github.com/minrk/SCDMSPlot/raw/master/plotdata.py -o '%s'"%__file__
+        if os.path.isdir(path.join(gitdir, '.git')):
+            git=True
+            os.chdir(gitdir)
+            cmd = 'git pull'
+        else:
+            git=False
+            cmd = "curl http://github.com/minrk/SCDMSPlot/raw/master/plotdata.py -o '%s'"%__file__
         print "Performing: %s"%cmd
         sys.stdout.flush()
         if not os.system(cmd):
-            print "previous version located at %s"%prevfile
+            if not git:
+                print "previous version located at %s"%prevfile
+            else:
+                os.chdir(cwd)
             print "don't forget to 'run %s' to load any updates"%__file__
         else:
             print "Download failed!"
     else:
         print "cancelling update"
+
+def push_to_git():
+    """pushes your changes to git"""
+    ans = raw_input("Are you sure you want to overwrite this file? (y/n): ").lower()
+    
+    cwd = path.abspath(os.curdir)
+    gitdir = path.abspath(path.dirname(__file__))
+    
+    if "y" in ans and "n" not in ans:
+        msg = raw_input("change summary: ")
+        if not msg.strip():
+            msg = 'interactive update'
+            
+        os.chdir(gitdir)
+        cmd = "git add plotdata.py && git commit -m \"%s\" && git push"%msg
+        print "Performing: %s"%cmd
+        sys.stdout.flush()
+        if not os.system(cmd):
+            'git push failed'
+
+        else:
+            print "Download failed!"
+        os.chdir(cwd)
+    else:
+        print "cancelling update"
+    
 
 def strip_extension(s):
     """remove the extension from a filename:
@@ -164,7 +203,7 @@ def parse(fname,keep=None):
             label = the_labels.get(z, '')
             if not isinstance(label, str):
                 label = label[0]
-            if keep is None or isinstance(z,str) or z in keep or label in keep\
+            if keep is None or z in keep or label in keep\
                         or label.replace('$','').replace('_','') in keep:
                 weights.append(z)
                 kept.append(i)
@@ -274,8 +313,46 @@ def parse_sod(fname):
     return title,rfstart,rfstop,wstart,wstop
                     
 
+def setup_styles(weights, styles):
+    labels = []
+    plotstyles = []
+    colors = []
+    
+    # for w,tup in zip(weights, rich_labels):
+    for w in weights:
+        tup = the_labels[w]
+        if isinstance(tup,str):
+            l = tup
+            s = styles[(hash(w)/len(the_colors))%len(styles)]
+            c = the_colors[hash(w)%len(the_colors)]
+            # print tup, w,s,c
+        elif len(tup) == 2:
+            l,s = tup
+            c = None
+        else:
+            l,s,c = tup
+        labels.append(l)
+        plotstyles.append(s)
+        colors.append(c)
+    return labels,plotstyles,colors
 
-def plot_run(fname,styles=None,keep=None,save=False,hold=False, cmap_plot=False,align_legend=True):
+def reorder(M,*also):
+    MM = zeros((M.shape[0]+1,M.shape[1]))
+    MM[1:] = M
+    MM[0] = range(M.shape[1])
+    lM = list(MM.transpose())
+    sM = sorted(lM,key=lambda a: a[1:].max(),reverse=True)
+    M2 = array(sM).transpose()
+    M = M2[1:]
+    reordered = [M]
+    neworder = map(int, M2[0])
+    for lis in also:
+        reordered.append( [lis[i] for i in neworder ] )
+    
+    return reordered
+    
+
+def plot_run(fname,styles=None,keep=None,save=False,hold=False, cmap_plot=False,align_legend=True,use_colors=True):
     """parse a file and plot it
     Also takes style, keep, and save keywords
     styles: str or list of str
@@ -322,22 +399,10 @@ def plot_run(fname,styles=None,keep=None,save=False,hold=False, cmap_plot=False,
     colors = []
     
     # for w,tup in zip(weights, rich_labels):
-    for w in weights:
-        tup = the_labels[w]
-        if isinstance(tup,str):
-            l = tup
-            s = styles[(hash(w)/len(the_colors))%len(styles)]
-            c = the_colors[hash(w)%len(the_colors)]
-            # print tup, w,s,c
-        elif len(tup) == 2:
-            l,s = tup
-            c = None
-        else:
-            l,s,c = tup
-        labels.append(l)
-        plotstyles.append(s)
-        colors.append(c)
-        
+    labels,plotstyles,colors=setup_styles(weights, styles)
+    if not use_colors:
+        colors = [None]*len(labels)
+    
     if 'min' in t_units.lower():
         t = t/60
     elif 'sec' in t_units.lower():
@@ -360,19 +425,7 @@ def plot_run(fname,styles=None,keep=None,save=False,hold=False, cmap_plot=False,
     # split in sets of ncolors for color repeating
     if not cmap_plot:
         if align_legend:
-            MM = zeros((M.shape[0]+1,M.shape[1]))
-            MM[1:] = M
-            MM[0] = range(M.shape[1])
-            lM = list(MM.transpose())
-            sM = sorted(lM,key=lambda a: a[1:].max(),reverse=True)
-            M2 = array(sM).transpose()
-            M = M2[1:]
-            
-            neworder = map(int, M2[0])
-            labels = [labels[i] for i in neworder]
-            weights = [weights[i] for i in neworder]
-            plotstyles = [plotstyles[i] for i in neworder]
-            colors = [colors[i] for i in neworder]
+            M,labels,weights,plotstyles,colors = reorder(M,labels,weights,plotstyles,colors)
         
         for s,c,line in zip(plotstyles,colors, M.transpose()):
             if c is not None:
@@ -404,6 +457,10 @@ def plot_run(fname,styles=None,keep=None,save=False,hold=False, cmap_plot=False,
     
     # shrink-to-fit and label x-axis:
     pylab.xlim(t.min(),t.max())
+    print M.min()
+    realmin = (M+M.max()*(M==M.min())).min()
+    print realmin
+    pylab.ylim(ymin=10**floor(log(realmin)/log(10)))
     
     if 'min' in t_units.lower():
         pylab.xlabel("t(min)")
@@ -412,13 +469,16 @@ def plot_run(fname,styles=None,keep=None,save=False,hold=False, cmap_plot=False,
     else:
         pylab.xlabel("Scan (6s interval)")
     
+    
+    
     pylab.ylabel("Amps, Torr for Total")
     pylab.grid(True) # turn on the grid
     if save: # save to a file
-        title = strip_extension(fname)
-        pylab.savefig(title+'.'+format)
+        if not isinstance(save, str):
+             save = strip_extension(fname) + '.' +format
+        pylab.savefig(save)
 
-def timeslice(files, offset=0,radius=1, styles=None,keep=None,save=False,hold=False, align_legend=True,normalize=True):
+def timeslice(files, offset=0,radius=1, styles=None,keep=None,save=False,hold=False, align_legend=True,normalize=True,use_colors=True):
     """Parse several files, and plot a single timeslice offset from rfstart for each of them.
     
     files: str or list of strs
@@ -494,27 +554,9 @@ def timeslice(files, offset=0,radius=1, styles=None,keep=None,save=False,hold=Fa
         names.append(name)
     M = array(lines)
     
-    labels = []
-    plotstyles = []
-    colors = []
-    
-    # for w,tup in zip(weights, rich_labels):
-    for w in weights:
-        tup = the_labels[w]
-        if isinstance(tup,str):
-            l = tup
-            s = styles[(hash(w)/len(the_colors))%len(styles)]
-            c = the_colors[hash(w)%len(the_colors)]
-            # print tup, w,s,c
-        elif len(tup) == 2:
-            l,s = tup
-            c = None
-        else:
-            l,s,c = tup
-        labels.append(l)
-        plotstyles.append(s)
-        colors.append(c)
-    
+    labels,plotstyles,colors=setup_styles(weights, styles)
+    if not use_colors:
+        colors = [None]*len(labels)
     #
     if not hold:
         pylab.figure() # new figure
@@ -522,19 +564,7 @@ def timeslice(files, offset=0,radius=1, styles=None,keep=None,save=False,hold=Fa
     fig.subplotpars.right=0.82 # pad right for placing 
     
     if align_legend:
-        MM = zeros((M.shape[0]+1,M.shape[1]))
-        MM[1:] = M
-        MM[0] = range(M.shape[1])
-        lM = list(MM.transpose())
-        sM = sorted(lM,key=lambda a: a[1:].max(),reverse=True)
-        M2 = array(sM).transpose()
-        M = M2[1:]
-        
-        neworder = map(int, M2[0])
-        labels = [labels[i] for i in neworder]
-        weights = [weights[i] for i in neworder]
-        plotstyles = [plotstyles[i] for i in neworder]
-        colors = [colors[i] for i in neworder]
+        M,labels, weights,plotstyles,colors = reorder(M,labels, weights,plotstyles,colors)
     
     x = range(len(M))
     for s,c,line in zip(plotstyles,colors, M.transpose()):
@@ -563,9 +593,19 @@ def timeslice(files, offset=0,radius=1, styles=None,keep=None,save=False,hold=Fa
     pylab.ylabel("Amps, Torr for Total")
     pylab.grid(True) # turn on the grid
     if save: # save to a file
-        title = strip_extension(fname)
-        pylab.savefig('C-Dep Scatter.%i'%offset+'.'+format)
+        if not isinstance(save, str):
+             save = 'C-Dep Scatter.%i'%offset+'.'+format
+        pylab.savefig(save)
     
+def outliers(lines, tolerance):
+    """filters a set of lines, keeping only those with points with outliers beyond a tolerance"""
+    keep = []
+    for i,line in enumerate(lines):
+        m = line.mean()
+        diffs = ((line-m)/m).abs()
+        if diffs.any():
+            keep.append(i)
+    return keep
 
 def overlay(left,right,color='grey'):
     """overlay a transparent rectangle between @left and $right, filling vertically."""
