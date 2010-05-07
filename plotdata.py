@@ -492,7 +492,7 @@ def timeslice(files, offset=0,radius=1, styles=None,keep=None,save=False,hold=Fa
         A = M[rfstart+offset-radius:rfstart+offset+radius+1].transpose()
         lines.append(map(mean, A))
         names.append(name)
-    M = array(lines)#.transpose()
+    M = array(lines)
     
     labels = []
     plotstyles = []
@@ -540,7 +540,7 @@ def timeslice(files, offset=0,radius=1, styles=None,keep=None,save=False,hold=Fa
     for s,c,line in zip(plotstyles,colors, M.transpose()):
         if normalize:
             m = line.mean()
-            line/(m+1e-17)
+            line = line/(m+1e-20)
         try:
             if c is not None:
                 pylab.semilogy(x, line,s+'o',color=c)
@@ -564,7 +564,7 @@ def timeslice(files, offset=0,radius=1, styles=None,keep=None,save=False,hold=Fa
     pylab.grid(True) # turn on the grid
     if save: # save to a file
         title = strip_extension(fname)
-        pylab.savefig('scatter.%i'%offset+'.'+format)
+        pylab.savefig('C-Dep Scatter.%i'%offset+'.'+format)
     
 
 def overlay(left,right,color='grey'):
