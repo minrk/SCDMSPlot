@@ -418,7 +418,7 @@ def plot_run(fname,styles=None,keep=None,save=False,hold=False, cmap_plot=False,
         title = strip_extension(fname)
         pylab.savefig(title+'.'+format)
 
-def timeslice(files, offset=0, styles=None,keep=None,save=False,hold=False, align_legend=True):
+def timeslice(files, offset=0,radius=1, styles=None,keep=None,save=False,hold=False, align_legend=True,normalize=True):
     """Parse several files, and plot a single timeslice offset from rfstart for each of them.
     
     files: str or list of strs
@@ -430,6 +430,11 @@ def timeslice(files, offset=0, styles=None,keep=None,save=False,hold=False, alig
         the slice to plot. units are scans from rfstart
         offset=10: 10 scans after rfstart
         offset=-20: 20 scans before rfstart
+    
+    radius: int
+        the radius about @offset
+        rfstart+offset +/- radius will be averaged
+        default: 1
     
     Also takes styles, keep, save, align_legend keywords
     
@@ -455,9 +460,6 @@ def timeslice(files, offset=0, styles=None,keep=None,save=False,hold=False, alig
         If False, legend will be sorted by molecular weight.
         default: True
         
-        
-    >>> plot_run('R123.txt',keep=['Ar',2])
-    >>> plot_run('R123.txt',':') # for all, but dotted
     """
     the_files = []
     if isinstance(files, str):
@@ -487,8 +489,8 @@ def timeslice(files, offset=0, styles=None,keep=None,save=False,hold=False, alig
             print "skipping %s"%name
             continue
         
-        print M.shape, rfstart
-        lines.append(M[rfstart+offset])
+        A = M[rfstart+offset-radius:rfstart+offset+radius+1].transpose()
+        lines.append(map(mean, A))
         names.append(name)
     M = array(lines)#.transpose()
     
@@ -536,6 +538,9 @@ def timeslice(files, offset=0, styles=None,keep=None,save=False,hold=False, alig
     
     x = range(len(M))
     for s,c,line in zip(plotstyles,colors, M.transpose()):
+        if normalize:
+            m = line.mean()
+            line/(m+1e-17)
         try:
             if c is not None:
                 pylab.semilogy(x, line,s+'o',color=c)
@@ -550,6 +555,8 @@ def timeslice(files, offset=0, styles=None,keep=None,save=False,hold=False, alig
     leg = pylab.legend(labels,loc=(1.0,0))
         
     title = "RF start + %i"%(offset)
+    if radius:
+            title += "$\pm$ %i"%(radius)
     pylab.title(title)
     pylab.xticks(x,names,fontsize='small')
     pylab.xlim(-1,len(names))
