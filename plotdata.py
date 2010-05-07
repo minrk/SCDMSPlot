@@ -313,7 +313,14 @@ def parse_sod(fname):
     return title,rfstart,rfstop,wstart,wstop
                     
 
-def setup_styles(weights, styles):
+def setup_styles(weights, style):
+    orig_style = style
+    if style is None:
+        style = the_styles # accomodates 35 lines without repeating
+        wasNone = True
+    elif isinstance(style,str):
+        style = [style]
+    
     labels = []
     plotstyles = []
     colors = []
@@ -323,7 +330,7 @@ def setup_styles(weights, styles):
         tup = the_labels[w]
         if isinstance(tup,str):
             l = tup
-            s = styles[(hash(w)/len(the_colors))%len(styles)]
+            s = style[(hash(w)/len(the_colors))%len(style)]
             c = the_colors[hash(w)%len(the_colors)]
             # print tup, w,s,c
         elif len(tup) == 2:
@@ -334,6 +341,15 @@ def setup_styles(weights, styles):
         labels.append(l)
         plotstyles.append(s)
         colors.append(c)
+        
+    #
+    if orig_style is not None:
+        colors = [None]*len(plotstyles)
+        while len(style) < len(plotstyles):
+            style *= 2
+        plotstyles = style
+        colors = [None]*len(plotstyles)
+    
     return labels,plotstyles,colors
 
 def reorder(M,*also):
@@ -352,11 +368,11 @@ def reorder(M,*also):
     return reordered
     
 
-def plot_run(fname,styles=None,keep=None,save=False,hold=False, cmap_plot=False,align_legend=True,use_colors=True):
+def plot_run(fname,style=None,keep=None,save=False,hold=False, cmap_plot=False,align_legend=True,use_colors=True):
     """parse a file and plot it
     Also takes style, keep, and save keywords
-    styles: str or list of str
-        see pylab.plot for line styles, e.g. ':', '-o'
+    style: str or list of str
+        see pylab.plot for line style, e.g. ':', '-o'
         default: solid line
     keep: a list of ints or strings
         filter for parsing the masses
@@ -387,21 +403,13 @@ def plot_run(fname,styles=None,keep=None,save=False,hold=False, cmap_plot=False,
     #
     ncolors = len(the_colors)
     
-    if styles is None:
-        styles = the_styles # accomodates 35 lines without repeating
-    elif isinstance(styles,str):
-        styles = [styles]
-    styles=list(styles) # in case of arrays that won't grow when I do styles*2
-    
     t,M,weights,sod = parse(fname,keep=keep) # get the data
     labels = []
     plotstyles = []
     colors = []
     
     # for w,tup in zip(weights, rich_labels):
-    labels,plotstyles,colors=setup_styles(weights, styles)
-    if not use_colors:
-        colors = [None]*len(labels)
+    labels,plotstyles,colors=setup_styles(weights, style)
     
     if 'min' in t_units.lower():
         t = t/60
@@ -434,14 +442,14 @@ def plot_run(fname,styles=None,keep=None,save=False,hold=False, cmap_plot=False,
                 pylab.semilogy(t,line,s)
                 
     else:
-        while ',' in styles:
-            styles.remove(',') # drop the pixel
+        while ',' in style:
+            style.remove(',') # drop the pixel
         # color mapped plot:
         colors = pylab.cm.ScalarMappable(cmap=pylab.cm.jet)
         colors.set_clim(0,M.shape[1])
         for i,line in enumerate(M.transpose()):
-            pylab.semilogy(t,line,styles[i%len(styles)],color=colors.to_rgba(i))
-    # for style in styles:
+            pylab.semilogy(t,line,style[i%len(style)],color=colors.to_rgba(i))
+    # for style in style:
     
     if sod: # title and overlays from SOD file (if we have it)
         pylab.title(sod[0])
@@ -478,7 +486,7 @@ def plot_run(fname,styles=None,keep=None,save=False,hold=False, cmap_plot=False,
              save = strip_extension(fname) + '.' +format
         pylab.savefig(save)
 
-def timeslice(files, offset=0,radius=1, styles=None,keep=None,save=False,hold=False, align_legend=True,normalize=True,use_colors=True):
+def timeslice(files, offset=0,radius=1, style=None,keep=None,save=False,hold=False, align_legend=True,normalize=True,use_colors=True):
     """Parse several files, and plot a single timeslice offset from rfstart for each of them.
     
     files: str or list of strs
@@ -496,10 +504,10 @@ def timeslice(files, offset=0,radius=1, styles=None,keep=None,save=False,hold=Fa
         rfstart+offset +/- radius will be averaged
         default: 1
     
-    Also takes styles, keep, save, align_legend keywords
+    Also takes style, keep, save, align_legend keywords
     
-    styles: str or list of str
-        see pylab.plot for line styles, e.g. ':', '-o'
+    style: str or list of str
+        see pylab.plot for line style, e.g. ':', '-o'
         default: solid line
     keep: a list of ints or strings
         filter for parsing the masses
@@ -529,12 +537,6 @@ def timeslice(files, offset=0,radius=1, styles=None,keep=None,save=False,hold=Fa
         the_files.extend(glob(f))
     
     # keep=kwargs.get('keep',None)
-    if styles is None:
-        styles = the_styles # accomodates 35 lines without repeating
-    elif isinstance(styles,str):
-        styles = [styles]
-    styles=list(styles) # in case of arrays that won't grow when I do styles*2
-    
     names = []
     lines = []
     for i,fname in enumerate(the_files):
@@ -554,9 +556,7 @@ def timeslice(files, offset=0,radius=1, styles=None,keep=None,save=False,hold=Fa
         names.append(name)
     M = array(lines)
     
-    labels,plotstyles,colors=setup_styles(weights, styles)
-    if not use_colors:
-        colors = [None]*len(labels)
+    labels,plotstyles,colors=setup_styles(weights, style)
     #
     if not hold:
         pylab.figure() # new figure
