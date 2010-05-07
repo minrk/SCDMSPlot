@@ -44,6 +44,8 @@ the_colors = ['b', 'g', 'r', 'c', 'm', 'orange', 'y', 'pink', 'slategray']
 the_styles = [':','-.','--']
 # see matplotlib.colors.cnames for named colors. '#RRGGBB' also works
 
+markersize = 4. # default is 6.
+
 ######## end preferences  ########
 
 import re
@@ -59,6 +61,7 @@ except:
     import matplotlib
     matplotlib.axes.set_default_color_cycle(the_colors)
 
+pylab.rcParams['lines.markersize'] = markersize
 pylab.rcParams['lines.markeredgewidth'] = 0.2
 pylab.rcParams['legend.fontsize']='small'
 pylab.rcParams['legend.labelspacing']=0.
@@ -414,6 +417,148 @@ def plot_run(fname,styles=None,keep=None,save=False,hold=False, cmap_plot=False,
     if save: # save to a file
         title = strip_extension(fname)
         pylab.savefig(title+'.'+format)
+
+def timeslice(files, offset=0, styles=None,keep=None,save=False,hold=False, align_legend=True):
+    """Parse several files, and plot a single timeslice offset from rfstart for each of them.
+    
+    files: str or list of strs
+        either filename(s): ['R123.txt', 'R555.txt']
+        or glob(s): ['R22*.txt', 'R3*']
+        or: 'R*.txt'
+        
+    offset: int
+        the slice to plot. units are scans from rfstart
+        offset=10: 10 scans after rfstart
+        offset=-20: 20 scans before rfstart
+    
+    Also takes styles, keep, save, align_legend keywords
+    
+    styles: str or list of str
+        see pylab.plot for line styles, e.g. ':', '-o'
+        default: solid line
+    keep: a list of ints or strings
+        filter for parsing the masses
+        Will only plot lines for elements whose weight or name is in keep
+        Always keeps the total pressure
+        Default: plot all
+        
+        For instance: keep=['Ar','H2']
+        or:           keep=[2,32]
+        or:           keep=['Ar', 2, '$H_2$']
+    
+    save: bool
+        set whether to save or not at the end of the plot
+        default: False
+    
+    align_legend: bool
+        set whether to sort the labels in the legend, such that the highest lines are the first labeled.
+        If False, legend will be sorted by molecular weight.
+        default: True
+        
+        
+    >>> plot_run('R123.txt',keep=['Ar',2])
+    >>> plot_run('R123.txt',':') # for all, but dotted
+    """
+    the_files = []
+    if isinstance(files, str):
+        files = [files]
+    # map(the_files.extend)
+    for f in files:
+        the_files.extend(glob(f))
+    
+    # keep=kwargs.get('keep',None)
+    if styles is None:
+        styles = the_styles # accomodates 35 lines without repeating
+    elif isinstance(styles,str):
+        styles = [styles]
+    styles=list(styles) # in case of arrays that won't grow when I do styles*2
+    
+    names = []
+    lines = []
+    for i,fname in enumerate(the_files):
+        t,M,weights,sod = parse(fname,keep=keep) # get the data
+        # assert sod is not None, "mus"
+        name = strip_extension(path.basename(fname))
+        if sod: # if we found a SOD file to parse
+            times = array(sod[1:])-1 # adjust for index starting at 1 in SOD
+            rfstart,rfstop,wstart,wstop = times
+            t -= t[times[0]] # 
+        else:
+            print "skipping %s"%name
+            continue
+        
+        print M.shape, rfstart
+        lines.append(M[rfstart+offset])
+        names.append(name)
+    M = array(lines)#.transpose()
+    
+    labels = []
+    plotstyles = []
+    colors = []
+    
+    # for w,tup in zip(weights, rich_labels):
+    for w in weights:
+        tup = the_labels[w]
+        if isinstance(tup,str):
+            l = tup
+            s = styles[(hash(w)/len(the_colors))%len(styles)]
+            c = the_colors[hash(w)%len(the_colors)]
+            # print tup, w,s,c
+        elif len(tup) == 2:
+            l,s = tup
+            c = None
+        else:
+            l,s,c = tup
+        labels.append(l)
+        plotstyles.append(s)
+        colors.append(c)
+    
+    #
+    if not hold:
+        pylab.figure() # new figure
+    fig = pylab.gcf()
+    fig.subplotpars.right=0.82 # pad right for placing 
+    
+    if align_legend:
+        MM = zeros((M.shape[0]+1,M.shape[1]))
+        MM[1:] = M
+        MM[0] = range(M.shape[1])
+        lM = list(MM.transpose())
+        sM = sorted(lM,key=lambda a: a[1:].max(),reverse=True)
+        M2 = array(sM).transpose()
+        M = M2[1:]
+        
+        neworder = map(int, M2[0])
+        labels = [labels[i] for i in neworder]
+        weights = [weights[i] for i in neworder]
+        plotstyles = [plotstyles[i] for i in neworder]
+        colors = [colors[i] for i in neworder]
+    
+    x = range(len(M))
+    for s,c,line in zip(plotstyles,colors, M.transpose()):
+        try:
+            if c is not None:
+                pylab.semilogy(x, line,s+'o',color=c)
+            else:
+                pylab.semilogy(x,line,s+'o')
+        except ValueError: # there was already a point-style specified?
+            if c is not None:
+                pylab.semilogy(x, line,s,color=c)
+            else:
+                pylab.semilogy(x,line,s)
+    
+    leg = pylab.legend(labels,loc=(1.0,0))
+        
+    title = "RF start + %i"%(offset)
+    pylab.title(title)
+    pylab.xticks(x,names,fontsize='small')
+    pylab.xlim(-1,len(names))
+    pylab.ylabel("Amps, Torr for Total")
+    pylab.grid(True) # turn on the grid
+    if save: # save to a file
+        title = strip_extension(fname)
+        pylab.savefig('scatter.%i'%offset+'.'+format)
+    
 
 def overlay(left,right,color='grey'):
     """overlay a transparent rectangle between @left and $right, filling vertically."""
