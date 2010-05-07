@@ -423,8 +423,14 @@ def overlay(left,right,color='grey'):
 
 
 def multiplot(*matches,**kwargs):
-    """for instance, multiplot('R*') or multiplot('R*.txt') or multiplot('*.txt','*.TXT')
-    This method always saves the plot to a file with the same prefix as the source data."""
+    """
+    This is a wrapper for plot_run on multiple files. See plot_run for keyword arguments (kwargs).
+    
+    For instance: multiplot('R*') or multiplot('R*.txt') or multiplot('*.txt','*.TXT')
+    
+    This method always saves the plot to a file with the same prefix as the source data.
+    
+    """
     # if not isinstance(matches, list):
         # matches=[matches]
     for match in matches:
