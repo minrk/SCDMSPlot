@@ -488,7 +488,7 @@ def plot_run(fname,style=None,keep=None,save=False,hold=False, cmap_plot=False,a
              save = strip_extension(fname) + '.' +format
         pylab.savefig(save)
 
-def timeslice(files, offset=0,radius=1, style=None,keep=None,save=False,hold=False, align_legend=True,normalize=True,use_colors=True):
+def timeslice(files, offset=0,radius=1, style=None,keep=None,save=False,hold=False, align_legend=True,normalize=False,return_data=False):
     """Parse several files, and plot a single timeslice offset from rfstart for each of them.
     
     files: str or list of strs
@@ -543,7 +543,6 @@ def timeslice(files, offset=0,radius=1, style=None,keep=None,save=False,hold=Fal
     lines = []
     for i,fname in enumerate(the_files):
         t,M,weights,sod = parse(fname,keep=keep) # get the data
-        # assert sod is not None, "mus"
         name = strip_extension(path.basename(fname))
         if sod: # if we found a SOD file to parse
             times = array(sod[1:])-1 # adjust for index starting at 1 in SOD
@@ -598,10 +597,16 @@ def timeslice(files, offset=0,radius=1, style=None,keep=None,save=False,hold=Fal
         if not isinstance(save, str):
              save = 'C-Dep Scatter.%i'%offset+'.'+format
         pylab.savefig(save)
+    if return_data:
+        return M.transpose()
 
 
 def single_gas(files, keep=2, offsets=[20], radius=1, style=None):
-    """runs timeslice for one gas at various times"""
+    """runs timeslice for one gas at various times
+    call it like:
+    >>> single_gas("R*.txt", keep=4, offsets=[0,20,40,72], radius=5)
+    there will be one line for each entry in @offsets
+    """
     the_files = []
     if isinstance(files, str):
         files = [files]
@@ -626,20 +631,20 @@ def single_gas(files, keep=2, offsets=[20], radius=1, style=None):
     pylab.figure()
     for off,s in zip(offsets,plotstyles):
         timeslice(files, style=s, keep=keep, offset=off, radius=radius, hold=True)
-    pylab.legend(["rfstart+%i"%i for i in offsets ])
+    pylab.legend(["rfstart$+%i\pm%i$"%(i,radius) for i in offsets ])
     label = the_labels[keep]
     if not isinstance(label, str):
         label = label[0]
     pylab.title(label)
     
 
-def outliers(lines, tolerance):
+def outliers(lines, tol=.25):
     """filters a set of lines, keeping only those with points with outliers beyond a tolerance"""
     keep = []
     for i,line in enumerate(lines):
         m = line.mean()
-        diffs = ((line-m)/m).abs()
-        if diffs.any():
+        diffs = abs((line-m)/m)
+        if (diffs > tol).any():
             keep.append(i)
     return keep
 
