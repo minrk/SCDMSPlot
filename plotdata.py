@@ -119,7 +119,7 @@ def update_me():
 
 def push_to_git():
     """pushes your changes to git"""
-    ans = raw_input("Are you sure you want to overwrite this file? (y/n): ").lower()
+    ans = raw_input("Are you sure you want to commit your changes to git? (y/n): ").lower()
     
     cwd = path.abspath(os.curdir)
     gitdir = path.abspath(path.dirname(__file__))
@@ -137,7 +137,7 @@ def push_to_git():
             'git push failed'
 
         else:
-            print "Download failed!"
+            print "Upload failed!"
         os.chdir(cwd)
     else:
         print "cancelling update"
@@ -180,7 +180,7 @@ def parse(fname,keep=None):
         sod_fname = path.join(parent, sod_prefix+"V.txt")
         try:
             sod = parse_sod(sod_fname)
-            print "  SOD: %s"%sod_fname
+            # print "  SOD: %s"%sod_fname
         except Exception, e:
             print "could not parse SOD %s"%sod_fname
             sod=None
