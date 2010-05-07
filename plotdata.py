@@ -163,6 +163,8 @@ def parse(fname,keep=None):
     """
     if keep is None:
         keep = default_lines
+    if isinstance(keep, (str,int)):
+        keep = [keep]
     times = []
     M = []
     with open(fname) as f:
@@ -596,7 +598,41 @@ def timeslice(files, offset=0,radius=1, style=None,keep=None,save=False,hold=Fal
         if not isinstance(save, str):
              save = 'C-Dep Scatter.%i'%offset+'.'+format
         pylab.savefig(save)
+
+
+def single_gas(files, keep=2, offsets=[20], radius=1, style=None):
+    """runs timeslice for one gas at various times"""
+    the_files = []
+    if isinstance(files, str):
+        files = [files]
+    # map(the_files.extend)
+    for f in files:
+        the_files.extend(glob(f))
     
+    if style is None:
+        colors = 'r g b k c m y'.split()
+        styles = ('-','--', '-.', ':')
+        plotstyles = []
+        for s in styles:
+            for c in colors:
+                plotstyles.append( c+s )
+    else:
+        if isinstance(style, str):
+            style = list(style)
+        plotstyles = style
+        while len(plotstyles) < len(offsets):
+            plotstyles.extend(style)
+    
+    pylab.figure()
+    for off,s in zip(offsets,plotstyles):
+        timeslice(files, style=s, keep=keep, offset=off, radius=radius, hold=True)
+    pylab.legend(["rfstart+%i"%i for i in offsets ])
+    label = the_labels[keep]
+    if not isinstance(label, str):
+        label = label[0]
+    pylab.title(label)
+    
+
 def outliers(lines, tolerance):
     """filters a set of lines, keeping only those with points with outliers beyond a tolerance"""
     keep = []
