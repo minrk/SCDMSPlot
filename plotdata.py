@@ -488,7 +488,8 @@ def plot_run(fname,style=None,keep=None,save=False,hold=False, cmap_plot=False,a
              save = strip_extension(fname) + '.' +format
         pylab.savefig(save)
 
-def timeslice(files, offset=0,radius=1, style=None,keep=None,save=False,hold=False, align_legend=True,normalize=False,return_data=False):
+def timeslice(files, offset=0,radius=1, style=None,keep=None,save=False,hold=False, align_legend=True,normalize=False,return_data=False,
+    outliers=0):
     """Parse several files, and plot a single timeslice offset from rfstart for each of them.
     
     files: str or list of strs
@@ -553,10 +554,17 @@ def timeslice(files, offset=0,radius=1, style=None,keep=None,save=False,hold=Fal
             continue
         
         A = M[rfstart+offset-radius:rfstart+offset+radius+1].transpose()
-        lines.append(map(mean, A))
+        line = map(mean, A)
+        lines.append(line)
         names.append(name)
     M = array(lines)
     
+    lines = M.transpose()
+    keepers = find_outliers(lines, tol=outliers)
+    keeplines = [ lines[i] for i in keepers ]
+    weights = [ weights[i] for i in keepers ]
+    M = array(keeplines).transpose()
+    # print M.shape
     labels,plotstyles,colors=setup_styles(weights, style)
     #
     if not hold:
@@ -638,12 +646,22 @@ def single_gas(files, keep=2, offsets=[20], radius=1, style=None):
     pylab.title(label)
     
 
-def outliers(lines, tol=.25):
-    """filters a set of lines, keeping only those with points with outliers beyond a tolerance"""
+def find_outliers(lines, tol=.5, use_std = True):
+    """filters a set of lines, keeping only those with points with outliers beyond a tolerance
+    if use_std is True, tol is interpreted as a number of standard deviations.
+    This mode is good for finding single outliers, and ignoring lines that vary a lot
+    
+    Other option is just a fraction of the mean: this will catch more lines, but won't miss lines with several outliers."""
     keep = []
+    thetol = tol
     for i,line in enumerate(lines):
+        line = array(line)
         m = line.mean()
-        diffs = abs((line-m)/m)
+        diffs = abs((line-m))
+        if not use_std:
+            diffs = diffs/m
+        else:
+            tol = thetol*line.std()
         if (diffs > tol).any():
             keep.append(i)
     return keep
