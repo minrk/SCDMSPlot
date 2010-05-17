@@ -672,6 +672,13 @@ def overlay(left,right,color='grey'):
     y1,y2 = pylab.ylim()
     ax.fill_between([left,right],[y2*.99]*2,[y1*1.01]*2,color=color,alpha=0.25)
 
+def more_ticks():
+    y1,y2 = pylab.ylim()
+    # orders = int(log(y2/y1)/log(10))
+    ticks = linspace(y1,y2,11)
+    labels = ["%.1e"%t for t in ticks]
+    pylab.yticks(ticks, labels)
+    
 
 def multiplot(*matches,**kwargs):
     """
