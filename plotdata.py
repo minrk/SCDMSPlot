@@ -673,11 +673,23 @@ def overlay(left,right,color='grey'):
     ax.fill_between([left,right],[y2*.99]*2,[y1*1.01]*2,color=color,alpha=0.25)
 
 def more_ticks():
+    """turn minor ticks into major ticks"""
     y1,y2 = pylab.ylim()
-    # orders = int(log(y2/y1)/log(10))
-    ticks = linspace(y1,y2,11)
+    ax =  pylab.gca()
+    yax = ax.get_yaxis()
+    majors = list(yax.get_majorticklocs())
+    minors = list(yax.get_minorticklocs())
+    minors = minors[::max(len(majors)-1,1)]
+    ticks = majors+minors
+    ticks.sort()
+    ticks = [ t for t in ticks if t >= y1 and t <= y2 ]
     labels = ["%.1e"%t for t in ticks]
+    
+    # ax.set_yticklabels(labels, minor=True)
     pylab.yticks(ticks, labels)
+    orders = int(log(y2/y1)/log(10))
+    # ticks = linspace(y1,y2,11)
+    # pylab.yticks(ticks, labels)
     
 
 def multiplot(*matches,**kwargs):
